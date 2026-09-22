@@ -1,0 +1,22 @@
+{
+  "action": "completed",
+  "repository": {
+    "full_name": "acme/shop",
+    "name": "shop"
+  },
+  "check_run": {
+    "id": 998877,
+    "name": "pytest",
+    "head_sha": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+    "conclusion": "failure",
+    "html_url": "https://github.com/acme/shop/runs/998877",
+    "check_suite": {
+      "head_branch": "feature/login"
+    },
+    "output": {
+      "title": "pytest failed",
+      "summary": "1 failed",
+      "text": null
+    }
+  }
+}

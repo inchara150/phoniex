@@ -1,0 +1,14 @@
+{
+  "action": "completed",
+  "repository": {
+    "full_name": "acme/shop",
+    "name": "shop"
+  },
+  "workflow_run": {
+    "id": 5551214,
+    "name": "CI",
+    "head_sha": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+    "head_branch": "phoenix/fix-a1b2c3d",
+    "conclusion": "failure"
+  }
+}

@@ -1,0 +1,10 @@
+version: "1.0"
+project:
+  name: "express-auth-service"
+  language: "javascript"
+  framework: "express"
+sandbox:
+  base_image: "node:20-alpine"
+  install_command: "npm install express jest"
+verification:
+  test_command: "npx jest"

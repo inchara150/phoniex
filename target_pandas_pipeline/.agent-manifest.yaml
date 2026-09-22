@@ -1,0 +1,10 @@
+version: "1.0"
+project:
+  name: "pandas-ingestion-guardrail"
+  language: "python"
+  framework: "pandas"  # <-- Added missing key
+sandbox:
+  base_image: "python:3.11-slim"
+  install_command: "pip install pandas sqlalchemy pytest"
+verification:
+  test_command: "python -m pytest test_ingest.py"

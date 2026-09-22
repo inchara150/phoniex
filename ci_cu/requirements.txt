@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+PyGithub
+requests
+streamlit
+pandas
+httpx
+pytest

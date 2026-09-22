@@ -1,0 +1,44 @@
+{
+  "models": [
+    {
+      "name": "qwen2.5-coder:7b",
+      "tag": "Local \u00b7 Edge",
+      "carbon": 0.9,
+      "type": "local",
+      "cost": 0.0,
+      "latency": [
+        800,
+        1500
+      ]
+    },
+    {
+      "name": "gemini-3.6-flash",
+      "tag": "Cloud \u00b7 Gemini API",
+      "carbon": 2.61,
+      "type": "cloud",
+      "cost": 0.0001,
+      "latency": [
+        400,
+        900
+      ]
+    }
+  ],
+  "active_repo": {
+    "name": "phoenix_error_test_project",
+    "repo_url": "local://phoenix_error_test_project",
+    "branch": "main",
+    "path": "C:\\Users\\incha\\Downloads\\phoenix_error_test_project\\phoenix_error_test_project",
+    "manifest_file": "C:\\Users\\incha\\Downloads\\phoenix_error_test_project\\phoenix_error_test_project\\.agent-manifest.yaml",
+    "manifest_created": true
+  },
+  "workspaces": [
+    {
+      "name": "phoenix_error_test_project",
+      "repo_url": "local://phoenix_error_test_project",
+      "branch": "main",
+      "path": "C:\\Users\\incha\\Downloads\\phoenix_error_test_project\\phoenix_error_test_project",
+      "manifest_file": "C:\\Users\\incha\\Downloads\\phoenix_error_test_project\\phoenix_error_test_project\\.agent-manifest.yaml",
+      "manifest_created": true
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+version: "1.0"
+project:
+  name: "demo-service"
+  language: "python"
+  framework: "flask"
+sandbox:
+  base_image: "python:3.11-slim"
+  install_command: "pip install -r requirements.txt"
+verification:
+  test_command: "pytest tests/"
+database:
+  driver: "sqlite"

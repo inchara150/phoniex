@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phoenix — Fix smarter. Run cleaner.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#10233F; --navy-soft:#1B3660; --blue:#2557C7; --blue-light:#EEF3FD;
+  --blue-mist:#F6F9FE; --border:#DCE6F5; --white:#FFFFFF; --text:#2A3A55;
+  --text-soft:#5C6C87; --green:#1F9455; --green-bg:#E9F7EE; --red:#C0392B; --red-bg:#FCEBE9;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth; scroll-padding-top:70px;}
+body{margin:0; font-family:'Inter',sans-serif; color:var(--text); background:var(--white); background:var(--white);}
+h1,h2,h3,.brand,.step-num{font-family:'Space Grotesk',sans-serif;}
+img,svg{max-width:100%;}
+.wrap{max-width:1180px; margin:0 auto; padding:0 24px;}
+
+/* NAV */
+nav{position:sticky; top:0; z-index:20; background:rgba(255,255,255,.92); backdrop-filter:blur(6px); border-bottom:1px solid var(--border); padding:env(safe-area-inset-top,0px) 0 0;}
+.navrow{display:flex; align-items:center; gap:32px; height:64px;}
+.brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:19px; color:var(--navy); margin-right:auto;}
+.brand svg{width:26px; height:26px;}
+.navlinks{display:flex; gap:26px;}
+.navlinks a{color:var(--text-soft); text-decoration:none; font-size:14.5px; font-weight:500; padding:6px 2px; border-bottom:2px solid transparent;}
+.navlinks a:hover, .navlinks a:focus-visible{color:var(--navy); border-color:var(--blue);}
+.status{display:flex; align-items:center; gap:7px; font-size:13.5px; color:var(--text-soft); white-space:nowrap;}
+.dot{width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 0 3px var(--green-bg);}
+.navtoggle{display:none; background:none; border:1px solid var(--border); border-radius:8px; padding:7px 9px; cursor:pointer;}
+@media(max-width:760px){
+  .navlinks{position:absolute; top:64px; left:0; right:0; background:var(--white); flex-direction:column; gap:0; border-bottom:1px solid var(--border); padding:6px 24px; display:none;}
+  .navlinks.open{display:flex;}
+  .navlinks a{padding:11px 0; border-bottom:1px solid var(--blue-mist);}
+  .navtoggle{display:block;}
+  .status{display:none;}
+}
+
+/* HERO */
+.hero{background:linear-gradient(180deg,var(--blue-mist) 0%, var(--white) 100%); padding:64px 0 56px; border-bottom:1px solid var(--border);}
+.hero-grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:56px; align-items:center;}
+@media(max-width:860px){.hero-grid{grid-template-columns:1fr;}}
+.eyebrow{color:var(--blue); font-weight:600; font-size:13.5px; margin-bottom:14px;}
+.hero h1{font-size:44px; line-height:1.12; color:var(--navy); margin:0 0 18px; letter-spacing:-0.01em;}
+.hero p{font-size:16.5px; color:var(--text-soft); max-width:480px; line-height:1.6; margin:0 0 28px;}
+.btnrow{display:flex; gap:12px; flex-wrap:wrap;}
+.btn{border:none; border-radius:10px; padding:13px 22px; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit;}
+.btn-primary{background:var(--blue); color:#fff;}
+.btn-primary:hover{background:var(--navy-soft);}
+.btn-secondary{background:var(--white); color:var(--navy); border:1px solid var(--border);}
+.btn-secondary:hover{border-color:var(--blue); color:var(--blue);}
+
+.flow{background:var(--white); border:1px solid var(--border); border-radius:16px; padding:26px 22px; box-shadow:0 1px 2px rgba(16,35,63,.04);}
+.flow-title{font-size:12.5px; font-weight:600; color:var(--text-soft); margin-bottom:16px;}
+.flow-steps{display:flex; flex-direction:column; gap:0;}
+.flow-step{display:flex; align-items:center; gap:12px; padding:9px 0; font-size:14.5px; color:var(--navy); font-weight:500;}
+.flow-step .fdot{width:9px; height:9px; border-radius:50%; background:var(--blue); flex-shrink:0;}
+.flow-arrow{color:var(--border); font-size:15px; padding-left:3px;}
+.flow-step.fail .fdot{background:var(--red);}
+.flow-step.done .fdot{background:var(--green);}
+
+/* SECTION shared */
+section{padding:52px 0;}
+.section-head{margin-bottom:28px; max-width:640px;}
+.section-head h2{font-size:26px; color:var(--navy); margin:0 0 8px;}
+.section-head p{color:var(--text-soft); font-size:15px; margin:0; line-height:1.55;}
+
+/* DASHBOARD */
+.dash-grid{display:grid; grid-template-columns:1.15fr 0.85fr; gap:22px; align-items:start;}
+@media(max-width:860px){.dash-grid{grid-template-columns:1fr;}}
+.card{background:var(--white); border:1px solid var(--border); border-radius:14px; padding:24px; box-shadow:0 1px 3px rgba(16,35,63,.05);}
+.card-top{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;}
+.card-title{font-size:12.5px; font-weight:600; color:var(--text-soft); text-transform:uppercase; letter-spacing:.03em;}
+.wf-name{font-size:19px; font-weight:600; color:var(--navy); margin:2px 0 12px;}
+.badge{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; padding:5px 11px; border-radius:20px;}
+.badge-fail{background:var(--red-bg); color:var(--red);}
+.badge-ok{background:var(--green-bg); color:var(--green);}
+.badge-progress{background:var(--blue-light); color:var(--blue);}
+.progress-list{margin-top:18px; display:flex; flex-direction:column; gap:2px;}
+.pstep{display:flex; align-items:center; gap:11px; padding:9px 10px; border-radius:8px; font-size:14.5px;}
+.pstep.active{background:var(--blue-light);}
+.pstep .icon{width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0;}
+.pstep.check .icon{background:var(--green-bg); color:var(--green);}
+.pstep.active .icon{background:var(--blue); color:#fff;}
+.pstep.pending .icon{background:var(--blue-mist); color:var(--text-soft); border:1px solid var(--border);}
+.pstep.active span{color:var(--navy); font-weight:600;}
+.pstep.pending span{color:var(--text-soft);}
+
+/* decision card */
+.opts{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:16px 0 18px;}
+.opt{border:1px solid var(--border); border-radius:10px; padding:14px 10px; text-align:center;}
+.opt-name{font-size:14px; font-weight:700; color:var(--navy);}
+.opt-desc{font-size:12px; color:var(--text-soft); margin-top:4px; line-height:1.35;}
+.opt.selected{border-color:var(--blue); background:var(--blue-light);}
+.opt.selected .opt-name{color:var(--blue);}
+.model-row{border-top:1px solid var(--border); padding-top:16px; font-size:14px;}
+.model-row .label{color:var(--text-soft); font-size:12.5px;}
+.model-row .val{color:var(--navy); font-weight:600; margin:2px 0 6px;}
+
+/* CARBON */
+.carbon-wrap{background:var(--navy); border-radius:18px; padding:36px 32px; color:#fff;}
+.carbon-wrap .section-head h2, .carbon-wrap .section-head p{color:#fff;}
+.carbon-wrap .section-head p{color:#B9C7E0;}
+.carbon-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:22px 0 26px;}
+@media(max-width:700px){.carbon-stats{grid-template-columns:1fr;}}
+.cstat{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:18px;}
+.cstat .clabel{font-size:12.5px; color:#B9C7E0;}
+.cstat .cval{font-size:24px; font-weight:700; margin-top:6px;}
+.cstat .cval.green{color:#4ADE80;}
+.carbon-note{font-size:14px; color:#D6E0F2; max-width:560px; line-height:1.55; margin-bottom:22px;}
+.chart-box{background:rgba(255,255,255,.05); border-radius:12px; padding:16px 16px 6px;}
+
+/* BENEFITS */
+.benefits{display:grid; grid-template-columns:repeat(5,1fr); gap:16px;}
+@media(max-width:900px){.benefits{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:520px){.benefits{grid-template-columns:1fr;}}
+.bcard{border:1px solid var(--border); border-radius:12px; padding:20px 16px; background:var(--white);}
+.bcard .bicon{font-size:20px;}
+.bcard h3{font-size:15px; color:var(--navy); margin:10px 0 5px;}
+.bcard p{font-size:13px; color:var(--text-soft); margin:0; line-height:1.45;}
+
+/* HOW IT WORKS */
+.how-list{counter-reset:step; display:flex; flex-direction:column; border-top:1px solid var(--border);}
+.how-item{counter-increment:step; display:flex; gap:18px; padding:18px 0; border-bottom:1px solid var(--border);}
+.how-item::before{content:counter(step); flex-shrink:0; width:32px; height:32px; border-radius:50%; background:var(--blue-light); color:var(--blue); font-weight:700; font-family:'Space Grotesk',sans-serif; display:flex; align-items:center; justify-content:center; font-size:14px;}
+.how-item p{margin:5px 0 0; color:var(--navy); font-size:15.5px; font-weight:500;}
+
+/* ACTIVITY */
+.table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:12px;}
+table{border-collapse:collapse; width:100%; min-width:560px;}
+th{text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-soft); background:var(--blue-mist); padding:12px 16px; border-bottom:1px solid var(--border);}
+td{padding:13px 16px; font-size:14px; color:var(--text); border-bottom:1px solid var(--blue-mist);}
+tr:last-child td{border-bottom:none;}
+.stbadge{display:inline-flex; padding:3px 10px; border-radius:20px; font-size:12.5px; font-weight:600;}
+
+footer{border-top:1px solid var(--border); padding:26px 0; text-align:center; color:var(--text-soft); font-size:13px;}
+
+@media (prefers-reduced-motion: reduce){*{transition:none !important;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap navrow">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" fill="none"><path d="M16 3C11 9 8 13 8 18a8 8 0 0016 0c0-3-1-5-2.5-7 .3 2-.5 3.5-1.8 4.3C20.6 12 18.8 8 16 3z" fill="#2557C7"/><path d="M16 3C11 9 8 13 8 18a8 8 0 0016 0c0-3-1-5-2.5-7 .3 2-.5 3.5-1.8 4.3C20.6 12 18.8 8 16 3z" fill="#10233F" opacity="0.15"/></svg>
+      Phoenix
+    </div>
+    <button class="navtoggle" aria-label="Toggle menu" onclick="document.getElementById('navlinks').classList.toggle('open')">☰</button>
+    <div class="navlinks" id="navlinks">
+      <a href="#dashboard">Dashboard</a>
+      <a href="#workflow">Workflow</a>
+      <a href="#carbon">Carbon</a>
+      <a href="#activity">Activity</a>
+    </div>
+    <div class="status"><span class="dot"></span>System Status: Active</div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">Automated workflow recovery</div>
+      <h1>Fix smarter.<br>Run cleaner.</h1>
+      <p>Phoenix automatically fixes failed workflows while choosing a smarter, faster and more sustainable way to run them.</p>
+      <div class="btnrow">
+        <button class="btn btn-primary" onclick="document.getElementById('dashboard').scrollIntoView()">Run Demo</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('workflow').scrollIntoView()">View Workflow</button>
+      </div>
+    </div>
+    <div class="flow">
+      <div class="flow-title">Phoenix decision process</div>
+      <div class="flow-steps">
+        <div class="flow-step fail"><span class="fdot"></span>Workflow failed</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="fdot"></span>Phoenix analyzes</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="fdot"></span>Smart decision</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="fdot"></span>AI fix</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="fdot"></span>Test</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step done"><span class="fdot"></span>Pull request</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="dashboard">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Live workflow</h2>
+      <p>Phoenix is currently handling a failed workflow end to end.</p>
+    </div>
+    <div class="dash-grid">
+      <div class="card" id="workflow">
+        <div class="card-top">
+          <div>
+            <div class="card-title">GitHub workflow</div>
+            <div class="wf-name">backend-tests</div>
+          </div>
+          <span class="badge badge-fail">Failed — Phoenix handling it</span>
+        </div>
+        <div class="progress-list">
+          <div class="pstep check"><span class="icon">✓</span><span>Error detected</span></div>
+          <div class="pstep check"><span class="icon">✓</span><span>Problem analyzed</span></div>
+          <div class="pstep check"><span class="icon">✓</span><span>Execution option selected</span></div>
+          <div class="pstep check"><span class="icon">✓</span><span>Fix generated</span></div>
+          <div class="pstep check"><span class="icon">✓</span><span>Fix checked</span></div>
+          <div class="pstep active"><span class="icon">→</span><span>Testing fix</span></div>
+          <div class="pstep pending"><span class="icon">○</span><span>Pull request</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Phoenix decision</div>
+        <div class="opts">
+          <div class="opt"><div class="opt-name">Local</div><div class="opt-desc">Fast local execution</div></div>
+          <div class="opt selected"><div class="opt-name">Cloud</div><div class="opt-desc">More powerful execution</div></div>
+          <div class="opt"><div class="opt-name">Wait</div><div class="opt-desc">Run during cleaner grid conditions</div></div>
+        </div>
+        <div class="model-row">
+          <div class="label">Selected model</div>
+          <div class="val">Gemini</div>
+          <div class="label">Reason</div>
+          <div style="color:var(--text); margin-top:2px;">Best balance of speed, accuracy and cost</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="carbon">
+  <div class="wrap">
+    <div class="carbon-wrap">
+      <div class="section-head">
+        <h2>Carbon-aware execution</h2>
+        <p>Phoenix checks the current energy conditions before deciding how and when to run low-priority tasks.</p>
+      </div>
+      <div class="carbon-stats">
+        <div class="cstat"><div class="clabel">Current grid intensity</div><div class="cval">350 gCO₂/kWh</div></div>
+        <div class="cstat"><div class="clabel">Estimated carbon used</div><div class="cval green">0.0005 g</div></div>
+        <div class="cstat"><div class="clabel">Carbon budget</div><div class="cval">2.0 g</div></div>
+      </div>
+      <div class="chart-box">
+        <svg viewBox="0 0 600 140" width="100%" height="140" role="img" aria-label="Carbon intensity over 24 hours, with a cleaner window around hour 15">
+          <polyline points="0,60 50,50 100,70 150,90 200,110 250,120 300,100 350,70 400,55 450,45 500,55 550,65 600,60" fill="none" stroke="#5C8DEB" stroke-width="2.5"/>
+          <rect x="235" y="20" width="90" height="100" fill="#4ADE80" opacity="0.12" rx="4"/>
+          <text x="245" y="16" fill="#4ADE80" font-size="11" font-family="Inter">Cleaner window</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head"><h2>Key benefits</h2></div>
+    <div class="benefits">
+      <div class="bcard"><div class="bicon">⚡</div><h3>Faster</h3><p>Considers execution speed</p></div>
+      <div class="bcard"><div class="bicon">🎯</div><h3>Accurate</h3><p>Learns from previous successful fixes</p></div>
+      <div class="bcard"><div class="bicon">💰</div><h3>Cost-aware</h3><p>Considers execution cost</p></div>
+      <div class="bcard"><div class="bicon">🔋</div><h3>Energy-aware</h3><p>Tracks energy usage</p></div>
+      <div class="bcard"><div class="bicon">🌱</div><h3>Carbon-aware</h3><p>Avoids unnecessary carbon emissions</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-head">
+      <h2>How Phoenix works</h2>
+      <p>From a failed workflow to a merged fix, in six steps.</p>
+    </div>
+    <div class="how-list">
+      <div class="how-item"><p>Workflow fails</p></div>
+      <div class="how-item"><p>Phoenix understands the error</p></div>
+      <div class="how-item"><p>Phoenix chooses the best option</p></div>
+      <div class="how-item"><p>AI creates the fix</p></div>
+      <div class="how-item"><p>Fix is checked and tested</p></div>
+      <div class="how-item"><p>GitHub pull request is created</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="activity">
+  <div class="wrap">
+    <div class="section-head"><h2>Recent activity</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Time</th><th>Workflow</th><th>Action</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>09:42</td><td>backend-tests</td><td>Error detected</td><td><span class="stbadge badge-fail">Failed</span></td></tr>
+          <tr><td>09:43</td><td>backend-tests</td><td>Fix generated</td><td><span class="stbadge badge-progress">Processing</span></td></tr>
+          <tr><td>09:43</td><td>backend-tests</td><td>Fix tested</td><td><span class="stbadge badge-ok">Success</span></td></tr>
+          <tr><td>09:44</td><td>backend-tests</td><td>Pull request created</td><td><span class="stbadge badge-ok">Success</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer>Phoenix — Fix smarter. Run cleaner.</footer>
+
+</body>
+</html>
