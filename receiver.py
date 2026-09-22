@@ -365,7 +365,12 @@ def load_models_config():
     if os.path.exists(CONFIG_PATH):
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
+                cfg = json.load(f)
+                if "workspaces" not in cfg or not cfg["workspaces"]:
+                    cfg["workspaces"] = []
+                    if cfg.get("active_repo"):
+                        cfg["workspaces"].append(cfg["active_repo"])
+                return cfg
         except Exception:
             pass
     # Default initial models (matching actual setup)
@@ -676,9 +681,19 @@ def connect_repo(payload: RepoConnectPayload):
         "manifest_file": manifest_file,
         "manifest_created": created_manifest
     }
+    if "workspaces" not in config:
+        config["workspaces"] = []
+    ws_found = False
+    for ws in config["workspaces"]:
+        if os.path.normpath(ws.get("path", "")) == os.path.normpath(target_path):
+            ws.update(config["active_repo"])
+            ws_found = True
+            break
+    if not ws_found:
+        config["workspaces"].append(config["active_repo"])
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
-    return {"status": "connected", "active_repo": config["active_repo"]}
+    return {"status": "connected", "active_repo": config["active_repo"], "workspaces": config["workspaces"]}
 def ensure_manifest_exists(target_dir: str) -> tuple[bool, str]:
     """Ensures .agent-manifest.yaml exists. If not found, auto-creates a ready-to-run manifest."""
     manifest_names = [".agent-manifest.yaml", ".agent-manifest.yml", "agent-manifest.yaml", "agent-manifest.yml"]
@@ -1421,46 +1436,277 @@ def trigger_demo_offline_endpoint(payload: DemoOfflineIncidentPayload):
         "connectivity": connectivity_manager.get_status()["state"],
         "message": "Demo incident enqueued into local SQLite resilience queue and dispatched to local edge worker."
     }
-if __name__ == '__main__':
-    import uvicorn
-    print('Starting Phoenix Webhook Receiver on port 8000...')
-    uvicorn.run(app, host='127.0.0.1', port=8000)
 
-# --- MULTI WORKSPACE & ROUTING ENDPOINTS ---
+# -------------------------------------------------------------
+# MULTI-WORKSPACE ORCHESTRATOR & CARBON-BASED ROUTING
+# -------------------------------------------------------------
 class WorkspacePayload(BaseModel):
     name: str
     path: str
     branch: Optional[str] = "main"
+    set_active: Optional[bool] = False
+
+class ActivateWorkspacePayload(BaseModel):
+    path: Optional[str] = None
+    name: Optional[str] = None
+
+class DeleteWorkspacePayload(BaseModel):
+    path: str
+
+class BatchDiagnosePayload(BaseModel):
+    project_paths: Optional[list[str]] = None
 
 @app.get("/api/v1/workspaces")
 def get_workspaces():
     config = load_models_config()
-    return {"status": "ok", "workspaces": config.get("workspaces", [])}
+    workspaces = config.get("workspaces", [])
+    active_repo = config.get("active_repo", {})
+    active_path = os.path.normpath(active_repo.get("path", "")) if active_repo else ""
+
+    # Enrich each workspace with live disk and manifest inspection
+    enriched = []
+    for ws in workspaces:
+        raw_p = ws.get("path", "")
+        norm_p = os.path.normpath(raw_p) if raw_p else ""
+        exists = os.path.exists(norm_p) if norm_p else False
+        manifest_p = os.path.join(norm_p, ".agent-manifest.yaml") if exists else ""
+        has_manifest = os.path.exists(manifest_p) if exists else False
+        is_active = (norm_p == active_path) if (norm_p and active_path) else False
+
+        # Detect project language / framework if manifest exists
+        lang = ws.get("language") or "unknown"
+        if has_manifest:
+            try:
+                with open(manifest_p, "r", encoding="utf-8") as mf:
+                    content = mf.read()
+                    if "javascript" in content or "express" in content or "node" in content:
+                        lang = "javascript (Node.js)"
+                    elif "pandas" in content:
+                        lang = "python (Pandas Data)"
+                    elif "python" in content:
+                        lang = "python (Flask/PyTest)"
+            except Exception:
+                pass
+
+        enriched.append({
+            "name": ws.get("name") or os.path.basename(norm_p) or "workspace",
+            "label": ws.get("label") or ws.get("name") or os.path.basename(norm_p),
+            "path": norm_p,
+            "branch": ws.get("branch") or "main",
+            "exists": exists,
+            "has_manifest": has_manifest,
+            "manifest_file": manifest_p if has_manifest else None,
+            "language": lang,
+            "is_active": is_active
+        })
+
+    return {
+        "status": "ok",
+        "workspaces": enriched,
+        "active_repo": active_repo,
+        "count": len(enriched)
+    }
 
 @app.post("/api/v1/workspaces")
 def add_workspace(payload: WorkspacePayload):
     config = load_models_config()
     if "workspaces" not in config:
         config["workspaces"] = []
-    
-    # Check if exists
-    for ws in config["workspaces"]:
-        if ws.get("path") == payload.path:
-            return {"status": "exists", "workspace": ws}
-            
+
+    raw_path = payload.path.strip().strip('"').strip("'")
+    if not os.path.isabs(raw_path):
+        target_path = os.path.normpath(os.path.join(BASE_DIR, raw_path))
+    else:
+        target_path = os.path.normpath(raw_path)
+
+    os.makedirs(target_path, exist_ok=True)
+    created_manifest, manifest_file = ensure_manifest_exists(target_path)
+    ws_name = payload.name.strip() or os.path.basename(target_path) or "workspace"
+
     new_ws = {
-        "name": payload.name,
-        "path": payload.path,
-        "branch": payload.branch,
-        "manifest_created": False
+        "name": ws_name,
+        "label": ws_name,
+        "path": target_path,
+        "branch": payload.branch or "main",
+        "manifest_file": manifest_file,
+        "manifest_created": created_manifest
     }
-    config["workspaces"].append(new_ws)
-    
+
+    # Upsert in workspaces list
+    found_idx = -1
+    for idx, ws in enumerate(config["workspaces"]):
+        if os.path.normpath(ws.get("path", "")) == target_path:
+            found_idx = idx
+            break
+
+    if found_idx >= 0:
+        config["workspaces"][found_idx].update(new_ws)
+    else:
+        config["workspaces"].append(new_ws)
+
+    if payload.set_active or not config.get("active_repo"):
+        config["active_repo"] = new_ws
+
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
-        
-    return {"status": "added", "workspace": new_ws}
 
+    return {
+        "status": "added",
+        "workspace": new_ws,
+        "active_repo": config.get("active_repo"),
+        "workspaces": config["workspaces"]
+    }
+
+@app.post("/api/v1/workspaces/activate")
+def activate_workspace(payload: ActivateWorkspacePayload):
+    config = load_models_config()
+    workspaces = config.get("workspaces", [])
+    if not workspaces:
+        raise HTTPException(status_code=400, detail="No workspaces configured.")
+
+    target_path = os.path.normpath(payload.path) if payload.path else None
+    target_name = payload.name.strip().lower() if payload.name else None
+
+    matched = None
+    for ws in workspaces:
+        p = os.path.normpath(ws.get("path", ""))
+        n = (ws.get("name") or "").strip().lower()
+        if (target_path and p == target_path) or (target_name and n == target_name):
+            matched = ws
+            break
+
+    if not matched:
+        if target_path and os.path.exists(target_path):
+            created_m, mf = ensure_manifest_exists(target_path)
+            matched = {
+                "name": os.path.basename(target_path) or "workspace",
+                "path": target_path,
+                "branch": "main",
+                "manifest_file": mf,
+                "manifest_created": created_m
+            }
+            workspaces.append(matched)
+            config["workspaces"] = workspaces
+        else:
+            raise HTTPException(status_code=404, detail="Workspace not found.")
+
+    config["active_repo"] = matched
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
+
+    return {
+        "status": "activated",
+        "active_repo": matched,
+        "message": f"Active workspace successfully switched to {matched.get('name')}"
+    }
+
+@app.delete("/api/v1/workspaces")
+def delete_workspace(payload: DeleteWorkspacePayload):
+    config = load_models_config()
+    target_path = os.path.normpath(payload.path)
+    workspaces = config.get("workspaces", [])
+
+    new_workspaces = [ws for ws in workspaces if os.path.normpath(ws.get("path", "")) != target_path]
+    config["workspaces"] = new_workspaces
+
+    # If the deleted workspace was the active one, switch active to the first remaining
+    active_path = os.path.normpath(config.get("active_repo", {}).get("path", ""))
+    if active_path == target_path:
+        config["active_repo"] = new_workspaces[0] if new_workspaces else {}
+
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
+
+    return {
+        "status": "deleted",
+        "active_repo": config.get("active_repo"),
+        "workspaces": config["workspaces"]
+    }
+
+@app.post("/api/v1/workspaces/batch-diagnose")
+def batch_diagnose_workspaces(payload: Optional[BatchDiagnosePayload] = None):
+    """
+    Diagnoses multiple project folders concurrently across all active workspaces.
+    """
+    import concurrent.futures
+    from static_analysis import run_static_analysis
+
+    config = load_models_config()
+    all_workspaces = config.get("workspaces", [])
+    
+    if payload and payload.project_paths:
+        target_paths = [os.path.normpath(p) for p in payload.project_paths]
+        targets = [ws for ws in all_workspaces if os.path.normpath(ws.get("path", "")) in target_paths]
+        if not targets:
+            targets = [{"name": os.path.basename(p), "path": p} for p in target_paths]
+    else:
+        targets = all_workspaces
+
+    def _diagnose_single(ws):
+        p = ws.get("path")
+        name = ws.get("name") or os.path.basename(p)
+        if not p or not os.path.exists(p):
+            return {"name": name, "path": p, "status": "error", "detail": "Directory does not exist", "errors_found": 0, "scanned_count": 0}
+        
+        try:
+            diag = diagnose_project(DiagnosePayload(project_path=p))
+            return {
+                "name": name,
+                "path": p,
+                "status": diag.get("status", "ok"),
+                "errors_found": diag.get("errors_found", 0),
+                "scanned_count": diag.get("scanned_count", 0),
+                "tests_checked": diag.get("tests_checked", False),
+                "manifest": diag.get("manifest", {}),
+                "issues": diag.get("issues", [])
+            }
+        except Exception as err:
+            return {"name": name, "path": p, "status": "error", "detail": str(err), "errors_found": 0, "scanned_count": 0}
+
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(_diagnose_single, ws): ws for ws in targets}
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                results.append(future.result())
+            except Exception as e:
+                ws = futures[future]
+                results.append({"name": ws.get("name"), "path": ws.get("path"), "status": "error", "detail": str(e)})
+
+    return {"status": "ok", "count": len(results), "results": results}
+
+@app.post("/api/v1/workspaces/batch-heal")
+def batch_heal_workspaces(payload: Optional[BatchDiagnosePayload] = None):
+    """
+    Dispatches self-healing across multiple project folders concurrently!
+    """
+    config = load_models_config()
+    all_workspaces = config.get("workspaces", [])
+    
+    if payload and payload.project_paths:
+        target_paths = [os.path.normpath(p) for p in payload.project_paths]
+        targets = [ws for ws in all_workspaces if os.path.normpath(ws.get("path", "")) in target_paths]
+    else:
+        targets = all_workspaces
+
+    dispatched = []
+    for ws in targets:
+        p = ws.get("path")
+        if p and os.path.exists(p):
+            name = ws.get("name") or os.path.basename(p)
+            t = threading.Thread(target=run_live_healing_thread, args=(p,), daemon=True)
+            t.start()
+            dispatched.append({"name": name, "path": p, "status": "healing_dispatched"})
+
+    return {
+        "status": "started",
+        "message": f"Dispatched self-healing to {len(dispatched)} concurrent project workspaces.",
+        "dispatched": dispatched
+    }
+
+# -------------------------------------------------------------
+# TASK & CARBON BASED AI ROUTING RULES
+# -------------------------------------------------------------
 class RoutingRulePayload(BaseModel):
     task_type: str
     local_model: str
@@ -1469,13 +1715,14 @@ class RoutingRulePayload(BaseModel):
 @app.get("/api/v1/routing-rules")
 def get_routing_rules():
     config = load_models_config()
-    return {"status": "ok", "rules": config.get("routing_rules", {
+    default_rules = {
         "syntax": {"local_edge": "qwen2.5-coder:7b", "cloud_heavy": "gemini-3.6-flash"},
         "db_deadlock": {"local_edge": "qwen2.5-coder:7b", "cloud_heavy": "claude-3-5-sonnet-20240620"},
         "algorithm": {"local_edge": "qwen2.5-coder:7b", "cloud_heavy": "gemini-3.6-flash"},
         "formatting": {"local_edge": "qwen2.5-coder:7b", "cloud_heavy": "gemini-3.6-flash"},
         "KeyError": {"local_edge": "qwen2.5-coder:7b", "cloud_heavy": "gemini-3.6-flash"}
-    })}
+    }
+    return {"status": "ok", "rules": config.get("routing_rules", default_rules)}
 
 @app.post("/api/v1/routing-rules")
 def update_routing_rule(payload: RoutingRulePayload):
@@ -1499,3 +1746,7 @@ def update_routing_rule(payload: RoutingRulePayload):
         
     return {"status": "updated", "rules": config["routing_rules"]}
 
+if __name__ == '__main__':
+    import uvicorn
+    print('Starting Phoenix Webhook Receiver on port 8000...')
+    uvicorn.run(app, host='127.0.0.1', port=8000)

@@ -120,7 +120,14 @@ tr:last-child td{border-bottom:none;}
       <div class="brand">
         <svg viewBox="0 0 32 32" fill="none"><path d="M16 3C11 9 8 13 8 18a8 8 0 0016 0c0-3-1-5-2.5-7 .3 2-.5 3.5-1.8 4.3C20.6 12 18.8 8 16 3z" fill="#2557C7"/></svg>
         Phoenix — Carbon &amp; Latency-Aware Workflow Scheduler
-        <span class="repo-pill" id="activeRepoPill">repo: phoenix-core (main)</span>
+        <div style="display:inline-flex; align-items:center; gap:8px; margin-left:12px; vertical-align:middle;">
+          <span style="font-size:11px; font-weight:700; color:var(--text-soft); text-transform:uppercase; letter-spacing:0.04em;">📁 Active Project:</span>
+          <select id="headerWorkspaceSelect" onchange="onHeaderWorkspaceChange(this.value)" style="padding:5px 12px; font-size:12px; font-weight:700; background:#fff; border:1.5px solid var(--blue); border-radius:20px; color:var(--navy); font-family:'JetBrains Mono',monospace; cursor:pointer; outline:none; box-shadow:0 1px 3px rgba(37,87,199,0.15);" title="Switch active project folder">
+            <option value="">Loading projects...</option>
+          </select>
+          <span class="stbadge badge-ok" id="activeWorkspaceBadge" style="font-size:11px; padding:3px 9px;">Active</span>
+          <span class="repo-pill" id="activeRepoPill" style="display:none;"></span>
+        </div>
       </div>
       <div class="subtitle">Live autonomous CI/CD self-healing scheduler &amp; model router</div>
     </div>
@@ -1443,75 +1450,476 @@ setInterval(fetchLiveTelemetry, 2000);
 
 <!-- Modal: Workspaces & Routing -->
 <div class="modal-backdrop" id="workspacesModal">
-  <div class="modal-box" style="max-width:800px; max-height:90vh; overflow-y:auto;">
+  <div class="modal-box" style="max-width:920px; max-height:92vh; overflow-y:auto;">
     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
       <div>
-        <h3 class="modal-title">📂 Multi-Workspace & AI Routing Rules</h3>
-        <p class="modal-desc">Manage multiple active project folders concurrently and assign AI agents based on task types and carbon costs.</p>
+        <h3 class="modal-title" style="display:flex; align-items:center; gap:8px;">
+          <span>📂</span> Multi-Workspace Manager &amp; Carbon Routing
+        </h3>
+        <p class="modal-desc" style="margin-bottom:0;">
+          Switch between multiple project folders concurrently, execute multi-project diagnostics &amp; healing in parallel, and assign AI agents per task type and carbon footprint.
+        </p>
       </div>
       <button class="act-btn" onclick="closeWorkspacesModal()" style="padding:4px 9px;">✕</button>
     </div>
 
-    <!-- Add Workspace -->
-    <div style="background:#F6F9FE; border-radius:10px; padding:12px 14px; margin-bottom:16px; border:1px solid #DCE6F5;">
-      <h4 style="margin:0 0 8px; color:var(--navy); font-size:14px;">Add New Workspace</h4>
-      <div style="display:flex; gap:10px;">
-        <input class="form-input" id="wsName" placeholder="Workspace Name (e.g. backend-service)" style="flex:1;">
-        <input class="form-input" id="wsPath" placeholder="Absolute Path (e.g. /home/user/backend)" style="flex:2;">
-        <button class="act-btn primary" onclick="addWorkspace()" style="white-space:nowrap;">+ Add Folder</button>
+    <!-- Quick Action / Add Workspace Toolbar -->
+    <div style="background:#F6F9FE; border-radius:12px; padding:14px 16px; margin-bottom:16px; border:1px solid #DCE6F5;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h4 style="margin:0; color:var(--navy); font-size:13.5px; font-weight:700;">Add New Project Workspace / Folder</h4>
+        <button class="act-btn" onclick="quickAddLocalWorkspaces()" style="background:#fff; border-color:#2557C7; color:#2557C7; font-size:11.5px; font-weight:600;" title="Scan project root and auto-register local folders">
+          🔍 Auto-Detect Local Target Projects
+        </button>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 2fr auto; gap:10px; align-items:center;">
+        <input class="form-input" id="wsName" placeholder="Workspace Name (e.g., target_movie_api)">
+        <input class="form-input" id="wsPath" placeholder="Directory Path (e.g., C:\Projects\my_service or .\target_app)">
+        <button class="act-btn primary" onclick="addWorkspace()" style="white-space:nowrap; padding:9px 18px;">+ Add Project</button>
       </div>
     </div>
 
-    <!-- Active Workspaces -->
+    <!-- Concurrent Multi-Project Execution Bar -->
+    <div style="background:#EEF3FD; border-radius:12px; padding:12px 16px; margin-bottom:16px; border:1px solid #2557C7; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div>
+        <b style="color:var(--navy); font-size:13px; display:flex; align-items:center; gap:6px;">
+          <span>⚡</span> Concurrent Multi-Project Operations
+        </b>
+        <div style="font-size:11.5px; color:var(--text-soft);">Execute tasks across all registered workspace folders simultaneously.</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="act-btn" onclick="batchDiagnoseAll()" id="btnBatchDiag" style="background:#fff; border-color:#1F9455; color:#1F9455; font-weight:700; font-size:12px;">
+          🩺 Batch Diagnose All (Parallel)
+        </button>
+        <button class="act-btn primary" onclick="batchHealAll()" id="btnBatchHeal" style="background:#2557C7; font-size:12px;">
+          🧠 Batch Auto-Heal All (Parallel)
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Batch Execution Results Banner -->
+    <div id="batchResultsContainer" style="display:none; margin-bottom:16px; padding:12px 14px; background:#fff; border:1px solid var(--border); border-radius:10px; max-height:180px; overflow-y:auto; font-size:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <b style="color:var(--navy);" id="batchResultsTitle">Batch Operations Status:</b>
+        <button class="act-btn" onclick="document.getElementById('batchResultsContainer').style.display='none'" style="padding:1px 6px; font-size:10px;">Close</button>
+      </div>
+      <div id="batchResultsList"></div>
+    </div>
+
+    <!-- Active Workspaces List -->
     <div style="margin-bottom:20px;">
-      <h4 style="margin:0 0 8px; color:var(--navy); font-size:14px;">Active Workspaces (Concurrent)</h4>
-      <div class="table-wrap">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <h4 style="margin:0; color:var(--navy); font-size:14px; font-weight:700;">Configured Project Workspaces (<span id="wsCountHeader">0</span>)</h4>
+        <button class="act-btn" onclick="loadWorkspaces()" style="padding:2px 8px; font-size:11px;">🔄 Refresh List</button>
+      </div>
+      <div class="table-wrap" style="max-height:260px; overflow-y:auto;">
         <table>
-          <thead><tr><th>Name</th><th>Path</th><th>Branch</th><th>Status</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Project Name</th>
+              <th>Path</th>
+              <th>Framework</th>
+              <th>Manifest</th>
+              <th>Status</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
           <tbody id="workspacesList">
-            <tr><td colspan="4" style="text-align:center; color:var(--text-soft); padding:16px;">Loading workspaces...</td></tr>
+            <tr><td colspan="6" style="text-align:center; color:var(--text-soft); padding:16px;">Loading workspaces...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Routing Rules based on Tasks & Carbon -->
-    <div style="background:#FDF3E1; border-radius:10px; padding:12px 14px; margin-bottom:16px; border:1px solid #F2C572;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <h4 style="margin:0; color:#B4790B; font-size:14px;">Task & Carbon Based Agent Routing</h4>
-        <button class="act-btn" onclick="saveRoutingRule()" style="background:#B4790B; color:#fff; border:none; padding:4px 10px; font-size:12px;">Update Rule</button>
+    <!-- Task & Carbon Based Agent Routing -->
+    <div style="background:#FDF3E1; border-radius:12px; padding:14px 16px; margin-bottom:16px; border:1px solid #F2C572;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <h4 style="margin:0; color:#B4790B; font-size:14px; font-weight:700;">🌱 Task &amp; Carbon-Based AI Agent Routing</h4>
+        <button class="act-btn" onclick="saveRoutingRule()" style="background:#B4790B; color:#fff; border:none; padding:5px 12px; font-size:12px; font-weight:600;">Update Routing Rule</button>
       </div>
-      <p style="font-size:12px; color:#B4790B; margin:0 0 10px;">Assign specific AI models based on the nature of the task and grid carbon intensity.</p>
+      <p style="font-size:12px; color:#8C5E09; margin:0 0 12px;">
+        Phoenix automatically dispatches tasks to local edge models or cloud APIs depending on task complexity and real-time grid carbon intensity.
+      </p>
       
-      <div style="display:flex; gap:10px; align-items:center;">
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#B4790B; font-weight:600;">Task Type (Bug Class)</label>
-          <input class="form-input" id="routeTaskType" placeholder="e.g. syntax, algorithm, db_deadlock" value="syntax">
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; align-items:center;">
+        <div>
+          <label style="font-size:11px; color:#8C5E09; font-weight:700; display:block; margin-bottom:4px;">Task Type (Bug Class)</label>
+          <select class="form-select" id="routeTaskType" style="background:#fff; font-size:12.5px;">
+            <option value="syntax">syntax (Syntax &amp; AST Fixes)</option>
+            <option value="algorithm">algorithm (Logic &amp; Calculation Bugs)</option>
+            <option value="db_deadlock">db_deadlock (Database &amp; Concurrency)</option>
+            <option value="formatting">formatting (Code Style &amp; Lints)</option>
+            <option value="KeyError">KeyError (Dict &amp; Data Pipeline Schema)</option>
+          </select>
         </div>
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#B4790B; font-weight:600;">Low Carbon Agent (Local Edge)</label>
-          <input class="form-input" id="routeLocalModel" placeholder="e.g. qwen2.5-coder:7b" value="qwen2.5-coder:7b">
+        <div>
+          <label style="font-size:11px; color:#8C5E09; font-weight:700; display:block; margin-bottom:4px;">Low-Carbon Agent (Local Edge)</label>
+          <input class="form-input" id="routeLocalModel" value="qwen2.5-coder:7b" style="background:#fff; font-size:12.5px;">
         </div>
-        <div style="flex:1;">
-          <label style="font-size:11px; color:#B4790B; font-weight:600;">High Compute Agent (Cloud)</label>
-          <input class="form-input" id="routeCloudModel" placeholder="e.g. gemini-3.6-flash" value="gemini-3.6-flash">
+        <div>
+          <label style="font-size:11px; color:#8C5E09; font-weight:700; display:block; margin-bottom:4px;">High-Compute Agent (Cloud Heavy)</label>
+          <input class="form-input" id="routeCloudModel" value="gemini-3.6-flash" style="background:#fff; font-size:12.5px;">
         </div>
       </div>
     </div>
     
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Task Type</th><th>Local Edge Agent (Low Carbon)</th><th>Cloud Agent (High Compute)</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Task Type (Bug Class)</th>
+            <th>Low-Carbon Local Agent (0.90 gCO₂)</th>
+            <th>Cloud Heavy Agent (High Accuracy)</th>
+          </tr>
+        </thead>
         <tbody id="routingRulesList">
           <tr><td colspan="3" style="text-align:center; color:var(--text-soft); padding:16px;">Loading rules...</td></tr>
         </tbody>
       </table>
     </div>
 
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="act-btn" onclick="closeWorkspacesModal()">Close</button>
+    </div>
+
   </div>
 </div>
 
+<script>
+// -------------------------------------------------------------
+// MULTI-WORKSPACE & TASK/CARBON ROUTING JAVASCRIPT CONTROLLER
+// -------------------------------------------------------------
+let allWorkspaces = [];
 
+function openWorkspacesModal() {
+  const modal = document.getElementById('workspacesModal');
+  if (modal) modal.classList.add('open');
+  loadWorkspaces();
+  loadRoutingRules();
+}
+
+function closeWorkspacesModal() {
+  const modal = document.getElementById('workspacesModal');
+  if (modal) modal.classList.remove('open');
+}
+
+async function loadWorkspaces() {
+  try {
+    const res = await fetch('/api/v1/workspaces');
+    if (!res.ok) return;
+    const data = await res.json();
+    allWorkspaces = data.workspaces || [];
+
+    // 1. Update header dropdown
+    const select = document.getElementById('headerWorkspaceSelect');
+    if (select) {
+      select.innerHTML = allWorkspaces.map(ws => `
+        <option value="${encodeURIComponent(ws.path)}" ${ws.is_active ? 'selected' : ''}>
+          ${ws.is_active ? '● ' : ''}${ws.name} (${ws.language || 'code'})
+        </option>
+      `).join('');
+    }
+
+    // Update active repo badge
+    const activeWs = allWorkspaces.find(ws => ws.is_active) || allWorkspaces[0];
+    const badge = document.getElementById('activeWorkspaceBadge');
+    if (badge && activeWs) {
+      badge.textContent = activeWs.name;
+    }
+    const headerCount = document.getElementById('wsCountHeader');
+    if (headerCount) headerCount.textContent = allWorkspaces.length;
+
+    // 2. Populate modal table
+    const tbody = document.getElementById('workspacesList');
+    if (!tbody) return;
+
+    if (allWorkspaces.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-soft); padding:16px;">No workspaces configured. Click "Auto-Detect Local Target Projects" above.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = allWorkspaces.map(ws => {
+      const activeBadge = ws.is_active 
+        ? '<span class="stbadge badge-ok">🟢 Active</span>' 
+        : '<span class="stbadge" style="background:#f1f5f9; color:#64748b;">Standby</span>';
+
+      const manifestBadge = ws.has_manifest 
+        ? '<span style="color:var(--green); font-weight:600;">✓ Ready</span>' 
+        : '<span style="color:var(--amber); font-weight:600;">⚠ Missing</span>';
+
+      return `
+        <tr style="${ws.is_active ? 'background:#F6F9FE;' : ''}">
+          <td>
+            <strong style="color:var(--navy); font-size:13px;">${ws.name}</strong>
+            ${ws.is_active ? ' <span style="font-size:10px; color:var(--blue); font-weight:700;">(CURRENT)</span>' : ''}
+          </td>
+          <td class="mono" style="font-size:11.5px; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${ws.path}">${ws.path}</td>
+          <td><span style="font-size:12px; color:var(--text-soft);">${ws.language || 'Python'}</span></td>
+          <td>${manifestBadge}</td>
+          <td>${activeBadge}</td>
+          <td style="text-align:right; white-space:nowrap;">
+            ${!ws.is_active ? `<button class="act-btn" onclick="switchActiveWorkspace('${encodeURIComponent(ws.path)}')" style="padding:3px 8px; font-size:11px; margin-right:4px;">⚡ Set Active</button>` : ''}
+            <button class="act-btn" onclick="diagnoseSpecificWorkspace('${encodeURIComponent(ws.path)}')" style="padding:3px 8px; font-size:11px; border-color:#1F9455; color:#1F9455; margin-right:4px;" title="Diagnose this folder">🩺 Diagnose</button>
+            <button class="act-btn" onclick="healSpecificWorkspace('${encodeURIComponent(ws.path)}')" style="padding:3px 8px; font-size:11px; border-color:#2557C7; color:#2557C7; margin-right:4px;" title="Auto-heal this folder">🧠 Heal</button>
+            <button class="act-btn" onclick="deleteWorkspace('${encodeURIComponent(ws.path)}')" style="padding:3px 6px; font-size:11px; border-color:#C0392B; color:#C0392B;" title="Remove folder">✕</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+  } catch (err) {
+    console.warn('Failed to load workspaces:', err);
+  }
+}
+
+async function onHeaderWorkspaceChange(encodedPath) {
+  if (!encodedPath) return;
+  const path = decodeURIComponent(encodedPath);
+  await switchActiveWorkspace(path);
+}
+
+async function switchActiveWorkspace(path) {
+  const cleanPath = path.startsWith('%') ? decodeURIComponent(path) : path;
+  try {
+    const res = await fetch('/api/v1/workspaces/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: cleanPath })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      await loadWorkspaces();
+      // Update global diagnose input if present
+      const diagInput = document.getElementById('diagProjectPath');
+      if (diagInput) diagInput.value = cleanPath;
+    } else {
+      alert('Failed to activate workspace: ' + (data.detail || 'Unknown error'));
+    }
+  } catch (e) {
+    console.error('Error switching workspace:', e);
+  }
+}
+
+async function addWorkspace() {
+  const nameInput = document.getElementById('wsName');
+  const pathInput = document.getElementById('wsPath');
+  const name = nameInput.value.trim();
+  const path = pathInput.value.trim();
+
+  if (!path) {
+    alert('Please enter a directory path.');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/v1/workspaces', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name || undefined, path, set_active: true })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      nameInput.value = '';
+      pathInput.value = '';
+      await loadWorkspaces();
+      alert(`✓ Project "${data.workspace?.name || path}" added and set as active workspace!`);
+    } else {
+      alert('Error adding workspace: ' + (data.detail || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Request error: ' + e.message);
+  }
+}
+
+async function quickAddLocalWorkspaces() {
+  const candidates = [
+    { name: 'target_movie_api', path: 'target_movie_api' },
+    { name: 'target_express_api', path: 'target_express_api' },
+    { name: 'target_pandas_pipeline', path: 'target_pandas_pipeline' },
+    { name: 'test_app', path: 'test_app' }
+  ];
+
+  let addedCount = 0;
+  for (const c of candidates) {
+    try {
+      const res = await fetch('/api/v1/workspaces', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: c.name, path: c.path, set_active: false })
+      });
+      if (res.ok) addedCount++;
+    } catch(e){}
+  }
+  await loadWorkspaces();
+  alert(`✓ Synchronized ${addedCount} local target project folders into multi-workspace manager!`);
+}
+
+async function deleteWorkspace(encodedPath) {
+  const path = decodeURIComponent(encodedPath);
+  if (!confirm(`Are you sure you want to remove this workspace from Phoenix?
+
+${path}`)) return;
+
+  try {
+    const res = await fetch('/api/v1/workspaces', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path })
+    });
+    if (res.ok) {
+      await loadWorkspaces();
+    }
+  } catch(e) {
+    console.error('Delete error:', e);
+  }
+}
+
+function diagnoseSpecificWorkspace(encodedPath) {
+  const path = decodeURIComponent(encodedPath);
+  closeWorkspacesModal();
+  openDiagnoseModal();
+  const input = document.getElementById('diagProjectPath');
+  if (input) input.value = path;
+  runDiagnostics();
+}
+
+function healSpecificWorkspace(encodedPath) {
+  const path = decodeURIComponent(encodedPath);
+  closeWorkspacesModal();
+  openEvaluatorModal();
+  triggerAutoHealAndWatch(path);
+}
+
+async function batchDiagnoseAll() {
+  const btn = document.getElementById('btnBatchDiag');
+  const box = document.getElementById('batchResultsContainer');
+  const list = document.getElementById('batchResultsList');
+  if (!btn || !box || !list) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Diagnosing All Concurrently...';
+  box.style.display = 'block';
+  list.innerHTML = '<div style="color:var(--text-soft); padding:8px 0;">Running AST analysis &amp; test suites across all project folders in parallel...</div>';
+
+  try {
+    const res = await fetch('/api/v1/workspaces/batch-diagnose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (res.ok && data.results) {
+      list.innerHTML = data.results.map(r => {
+        const isOk = r.status === 'ok' && r.errors_found === 0;
+        const color = isOk ? 'var(--green)' : 'var(--red)';
+        const badge = isOk ? '<span class="stbadge badge-ok">0 Errors (Healthy)</span>' : `<span class="stbadge badge-fail">${r.errors_found} Bug(s) Found</span>`;
+        return `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid #f1f5f9;">
+            <div>
+              <b style="color:var(--navy); font-size:12px;">📁 ${r.name}</b>
+              <span style="font-size:11px; color:var(--text-soft); margin-left:8px;">(${r.scanned_count || 0} files scanned)</span>
+            </div>
+            <div>
+              ${badge}
+              <button class="act-btn" onclick="healSpecificWorkspace('${encodeURIComponent(r.path)}')" style="padding:2px 7px; font-size:11px; margin-left:8px; border-color:#2557C7; color:#2557C7;">⚡ Heal</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      list.innerHTML = `<div style="color:var(--red);">Batch diagnosis error: ${data.detail || 'Unknown'}</div>`;
+    }
+  } catch (err) {
+    list.innerHTML = `<div style="color:var(--red);">Network error: ${err.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🩺 Batch Diagnose All (Parallel)';
+  }
+}
+
+async function batchHealAll() {
+  const btn = document.getElementById('btnBatchHeal');
+  if (!confirm('Dispatch autonomous self-healing across ALL registered projects concurrently?')) return;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '🧠 Dispatching All...';
+  }
+  try {
+    const res = await fetch('/api/v1/workspaces/batch-heal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    closeWorkspacesModal();
+    openEvaluatorModal();
+    alert(`⚡ ${data.message || 'Batch self-healing dispatched!'}
+
+Monitoring live progress in Evaluator Live View.`);
+  } catch (err) {
+    alert('Batch heal error: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🧠 Batch Auto-Heal All (Parallel)';
+    }
+  }
+}
+
+async function loadRoutingRules() {
+  try {
+    const res = await fetch('/api/v1/routing-rules');
+    if (!res.ok) return;
+    const data = await res.json();
+    const tbody = document.getElementById('routingRulesList');
+    if (!tbody || !data.rules) return;
+
+    tbody.innerHTML = Object.entries(data.rules).map(([task, m]) => `
+      <tr>
+        <td><strong style="color:var(--navy); font-size:12.5px;">${task}</strong></td>
+        <td class="mono" style="color:var(--green); font-size:12px;">💻 ${m.local_edge || 'qwen2.5-coder:7b'}</td>
+        <td class="mono" style="color:var(--blue); font-size:12px;">☁️ ${m.cloud_heavy || 'gemini-3.6-flash'}</td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    console.warn('Failed to load routing rules:', e);
+  }
+}
+
+async function saveRoutingRule() {
+  const task = document.getElementById('routeTaskType').value.trim();
+  const local = document.getElementById('routeLocalModel').value.trim();
+  const cloud = document.getElementById('routeCloudModel').value.trim();
+
+  if (!task || !local || !cloud) {
+    alert('Please fill all routing parameters.');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/v1/routing-rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_type: task, local_model: local, cloud_model: cloud })
+    });
+    if (res.ok) {
+      await loadRoutingRules();
+      alert(`✓ Task routing updated: "${task}" -> Local: ${local} | Cloud: ${cloud}`);
+    }
+  } catch(e) {
+    alert('Error saving rule: ' + e.message);
+  }
+}
+
+// Auto-run on load
+window.addEventListener('DOMContentLoaded', () => {
+  loadWorkspaces();
+  loadRoutingRules();
+});
+setTimeout(() => {
+  loadWorkspaces();
+  loadRoutingRules();
+}, 400);
+</script>
 
 </body>
 </html>

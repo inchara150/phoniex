@@ -29,7 +29,7 @@
     "branch": "main",
     "path": "C:\\Users\\incha\\Downloads\\phoenix_error_test_project\\phoenix_error_test_project",
     "manifest_file": "C:\\Users\\incha\\Downloads\\phoenix_error_test_project\\phoenix_error_test_project\\.agent-manifest.yaml",
-    "manifest_created": true
+    "manifest_created": false
   },
   "workspaces": [
     {
@@ -38,6 +38,42 @@
       "branch": "main",
       "path": "C:\\Users\\incha\\Downloads\\phoenix_error_test_project\\phoenix_error_test_project",
       "manifest_file": "C:\\Users\\incha\\Downloads\\phoenix_error_test_project\\phoenix_error_test_project\\.agent-manifest.yaml",
+      "manifest_created": true
+    },
+    {
+      "name": "target_movie_api",
+      "label": "Target Movie API (Flask)",
+      "language": "python",
+      "path": "C:\\Users\\incha\\OneDrive\\Desktop\\phoniex\\phoniex\\target_movie_api",
+      "branch": "main",
+      "manifest_file": "C:\\Users\\incha\\OneDrive\\Desktop\\phoniex\\phoniex\\target_movie_api\\.agent-manifest.yaml",
+      "manifest_created": true
+    },
+    {
+      "name": "target_express_api",
+      "label": "Target Express API (Node.js)",
+      "language": "javascript",
+      "path": "C:\\Users\\incha\\OneDrive\\Desktop\\phoniex\\phoniex\\target_express_api",
+      "branch": "main",
+      "manifest_file": "C:\\Users\\incha\\OneDrive\\Desktop\\phoniex\\phoniex\\target_express_api\\.agent-manifest.yaml",
+      "manifest_created": true
+    },
+    {
+      "name": "target_pandas_pipeline",
+      "label": "Target Pandas Pipeline (Data)",
+      "language": "python",
+      "path": "C:\\Users\\incha\\OneDrive\\Desktop\\phoniex\\phoniex\\target_pandas_pipeline",
+      "branch": "main",
+      "manifest_file": "C:\\Users\\incha\\OneDrive\\Desktop\\phoniex\\phoniex\\target_pandas_pipeline\\.agent-manifest.yaml",
+      "manifest_created": true
+    },
+    {
+      "name": "test_app",
+      "label": "Test App (Python)",
+      "language": "python",
+      "path": "C:\\Users\\incha\\OneDrive\\Desktop\\phoniex\\phoniex\\test_app",
+      "branch": "main",
+      "manifest_file": "C:\\Users\\incha\\OneDrive\\Desktop\\phoniex\\phoniex\\test_app\\.agent-manifest.yaml",
       "manifest_created": true
     }
   ]
